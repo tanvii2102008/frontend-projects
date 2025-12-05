@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Wishlist / Goal Tracker</title>
+<style>
+    :root{
+        --bg-1:#071025; --bg-2:#081227; --card:#071529;
+        --accent:#7c5cff; --accent-2:#5eead4; --muted:#93a3b8;
+        --success:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+        --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box;font-family:Inter,Segoe UI,Roboto,system-ui,Arial,sans-serif}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 100%);color:#e6eef8;padding:28px}
+    .app{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px;justify-content:space-between}
+    header .title {display:flex;align-items:center;gap:12px}
+    h1{font-size:20px;margin:0;font-weight:700}
+    .subtitle{color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+    input[type="text"], input[type="date"], select, button{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    input[type="text"], input[type="date"], select{min-width:160px}
+    button{cursor:pointer;background:var(--accent);border:none;color:white;box-shadow: 0 6px 18px rgba(124,92,255,0.12);transition:transform .08s ease, box-shadow .08s ease}
+    button:hover{transform:translateY(-2px);box-shadow: 0 10px 26px rgba(124,92,255,0.14)}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);box-shadow:none}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 380px}}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow: 0 8px 30px rgba(2,6,23,0.6)}
+    .goal-list{display:flex;flex-direction:column;gap:12px;max-height:68vh;overflow:auto;padding-right:6px}
+    .goal{display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015));border:1px solid rgba(255,255,255,0.02)}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+    .slider{width:100%;appearance:none;height:6px;border-radius:999px;background:linear-gradient(90deg,#2b3440,#1b2533);outline:none}
+    .slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border:3px solid rgba(0,0,0,0.4);box-shadow: 0 4px 10px rgba(0,0,0,0.4)}
+    .progress-wrap{background:rgba(255,255,255,0.03);height:12px;border-radius:999px;overflow:hidden}
+    .progress{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .25s}
+    .motivation{font-size:13px;padding:8px;border-radius:8px;color:#061122}
+    .timeline{height:36px;display:flex;align-items:center;gap:8px}
+    .line{flex:1;height:6px;background:rgba(255,255,255,0.04);border-radius:6px;position:relative}
+    .marker{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid rgba(0,0,0,0.25)}
+    .small{font-size:12px;color:var(--muted)}
+    .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:600}
+    .empty{color:var(--muted);text-align:center;padding:30px;border-radius:8px}
+    .actions{display:flex;gap:6px}
+    .remove{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:6px 8px;border-radius:8px;cursor:pointer}
+    .cat{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px}
+    .goal .title {font-weight:700;cursor:pointer}
+    .goal .title:hover {text-decoration:underline}
+    .badge {font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,0.25);color:var(--muted)}
+    footer{margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+    /* toast */
+    #toast{position:fixed;right:20px;bottom:20px;background:#0b1220;color:#e6eef8;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;z-index:9999}
+    #toast.show{opacity:1;transform:none}
+    /* tiny file input */
+    #importFile{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+    <header>
+        <div class="title">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <rect x="1" y="1" width="22" height="22" rx="6" fill="url(#g)"/>
+                <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#5eead4"/></linearGradient></defs>
+            </svg>
+            <div>
+                <h1>Wishlist / Goal Tracker</h1>
+                <div class="subtitle">Track progress, set deadlines and celebrate milestones</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+            <label class="small" style="color:var(--muted);margin-right:8px">Sort:</label>
+            <select id="sortSelect" class="ghost" style="padding:8px 10px;border-radius:8px;background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.03)">
+                <option value="recent">Most Recent</option>
+                <option value="percentAsc">Progress ↑</option>
+                <option value="percentDesc">Progress ↓</option>
+                <option value="deadline">Nearest Deadline</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="controls">
+        <input id="title" type="text" placeholder="Goal title (e.g., Travel to Japan)" />
+        <select id="category" aria-label="Category">
+            <option value="Travel">Travel</option>
+            <option value="Fitness">Fitness</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Learning">Learning</option>
+            <option value="Other">Other</option>
+        </select>
+        <input id="targetDate" type="date" />
+        <button id="addBtn">Add Goal</button>
+        <button id="clearBtn" class="ghost" style="background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.04)">Clear All</button>
+        <button id="exportBtn" class="ghost" title="Export goals JSON">Export</button>
+        <button id="importBtn" class="ghost" title="Import goals JSON">Import</button>
+        <input type="file" id="importFile" accept=".json" />
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div><strong>Goals</strong><div class="small">Interact with a slider to update completion</div></div>
+                <div class="pill" id="totalCount">0 goals</div>
+            </div>
+
+            <div class="goal-list" id="goals"></div>
+            <div id="empty" class="empty">No goals yet — add one to start tracking progress.</div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div><strong>Overview</strong><div class="small">Quick stats & motivational cues</div></div>
+                <div class="pill" id="progressBadge">Summary</div>
+            </div>
+
+            <div style="margin-top:10px">
+                <div class="small">Average Completion</div>
+                <div class="progress-wrap" style="margin-top:8px">
+                    <div id="avgProgress" class="progress" style="width:0%"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px">
+                    <div class="small" id="avgPct">0%</div>
+                    <div class="small" id="nextGoalText">Add a goal to get a motivational nudge</div>
+                </div>
+            </div>
+
+            <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+            <div>
+                <strong>Motivational Tips</strong>
+                <ul id="tips" class="small" style="margin-top:8px;padding-left:18px">
+                    <li>Break big goals into measurable milestones.</li>
+                    <li>Track weekly progress and celebrate small wins.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer>Tip: Double-click a goal title to edit it. Use Export/Import to backup or move goals.</footer>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+    // Elements
+    const addBtn = document.getElementById('addBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFile = document.getElementById('importFile');
+    const sortSelect = document.getElementById('sortSelect');
+
+    const goalsEl = document.getElementById('goals');
+    const emptyEl = document.getElementById('empty');
+    const avgProgressEl = document.getElementById('avgProgress');
+    const avgPctEl = document.getElementById('avgPct');
+    const totalCountEl = document.getElementById('totalCount');
+    const nextGoalText = document.getElementById('nextGoalText');
+    const progressBadge = document.getElementById('progressBadge');
+    const titleInput = document.getElementById('title');
+
+    let goals = JSON.parse(localStorage.getItem('goals.v1')||'[]');
+
+    function save(){ localStorage.setItem('goals.v1', JSON.stringify(goals)); render(); showToast('Saved'); }
+
+    function uid(){ return Math.random().toString(36).slice(2,9); }
+
+    function addGoal(title, category, targetDate){
+        if(!title) return;
+        goals.unshift({
+            id:uid(), title, category, percent:0,
+            created:Date.now(), target: targetDate ? new Date(targetDate).getTime() : null,
+            notes: []
+        });
+        save();
+    }
+
+    function removeGoal(id){
+        goals = goals.filter(g=>g.id!==id); save(); showToast('Goal removed');
+    }
+
+    function updatePercent(id, p){
+        const g = goals.find(x=>x.id===id); if(!g) return;
+        p = Math.max(0, Math.min(100, Math.round(p)));
+        const prev = g.percent;
+        g.percent = p;
+        if(prev < 25 && p >= 25) g.notes.push({t:Date.now(), text:'Reached 25%'}); 
+        if(prev < 50 && p >= 50) g.notes.push({t:Date.now(), text:'Halfway there — 50%'}); 
+        if(prev < 75 && p >= 75) g.notes.push({t:Date.now(), text:'Crossed 75%'}); 
+        if(prev < 100 && p >= 100) g.notes.push({t:Date.now(), text:'Goal completed!'}); 
+        save();
+    }
+
+    function editTitle(id, newTitle){
+        const g = goals.find(x=>x.id===id); if(!g) return;
+        g.title = newTitle || g.title; save(); showToast('Title updated');
+    }
+
+    function daysBetween(a,b){ return Math.ceil((b-a)/(1000*60*60*24)); }
+
+    function render(){
+        goalsEl.innerHTML = '';
+        const sorted = sortGoals(goals.slice());
+        if(sorted.length === 0){ emptyEl.style.display='block'; } else { emptyEl.style.display='none'; }
+
+        sorted.forEach(g=>{
+            const card = document.createElement('div'); card.className='goal';
+
+    
+            const row = document.createElement('div'); row.className='row';
+            const left = document.createElement('div');
+            const titleSpan = document.createElement('div'); titleSpan.className='title'; titleSpan.textContent = g.title;
+            titleSpan.ondblclick = ()=> {
+                const val = prompt('Edit title', g.title);
+                if(val !== null){ editTitle(g.id, val.trim()); }
+            };
+            left.appendChild(titleSpan);
+
+            const meta = document.createElement('div'); meta.className='meta';
+            const cat = document.createElement('div'); cat.className='cat'; cat.textContent = g.category;
+            const dateSpan = document.createElement('div'); dateSpan.className='small';
+            dateSpan.style.marginLeft='6px';
+            dateSpan.innerHTML = g.target ? 'Target: ' + new Date(g.target).toLocaleDateString() : 'No target date';
+            meta.appendChild(cat); meta.appendChild(dateSpan);
+            left.appendChild(meta);
+            row.appendChild(left);
+
+            const actions = document.createElement('div'); actions.className='actions';
+            const pct = document.createElement('div'); pct.className='pill'; pct.textContent = g.percent + '%';
+            const rem = document.createElement('button'); rem.className='remove'; rem.textContent='Remove';
+            rem.onclick = ()=>{ if(confirm('Remove goal "'+g.title+'"?')) removeGoal(g.id); };
+            actions.appendChild(pct); actions.appendChild(rem);
+            row.appendChild(actions);
+            card.appendChild(row);
+
+            
+            const slider = document.createElement('input'); slider.type='range'; slider.min=0; slider.max=100; slider.value=g.percent; slider.className='slider';
+            slider.oninput = (e)=>{
+                pct.textContent = e.target.value + '%';
+                
+                prog.style.width = e.target.value + '%';
+            };
+            slider.onchange = (e)=>{ updatePercent(g.id, Number(e.target.value)); };
+            card.appendChild(slider);
+
+    
+            const progWrap = document.createElement('div'); progWrap.className='progress-wrap';
+            const prog = document.createElement('div'); prog.className='progress'; prog.style.width = g.percent + '%';
+            progWrap.appendChild(prog);
+            card.appendChild(progWrap);
+
+        
+            const motiv = document.createElement('div'); motiv.className='motivation small';
+            const msg = motivationMessage(g.percent);
+            motiv.textContent = msg.text;
+            motiv.style.background = msg.bg;
+            card.appendChild(motiv);
+
+    
+            const tl = document.createElement('div'); tl.className='timeline';
+            const leftMeta = document.createElement('div'); leftMeta.className='small';
+            leftMeta.innerHTML = 'Created: ' + new Date(g.created).toLocaleDateString();
+            const lineWrap = document.createElement('div'); lineWrap.className='line';
+            const marker = document.createElement('div'); marker.className='marker';
+            let posPct = g.percent;
+            if(g.target){
+                const now = Date.now();
+                const total = Math.max(1, g.target - g.created);
+                const passed = Math.max(0, Math.min(total, now - g.created));
+                const dateProgress = Math.round((passed/total)*100);
+                posPct = Math.round(0.7*g.percent + 0.3*dateProgress);
+            }
+            marker.style.left = posPct + '%';
+            lineWrap.appendChild(marker);
+            tl.appendChild(leftMeta);
+            tl.appendChild(lineWrap);
+
+            const rightMeta = document.createElement('div'); rightMeta.className='small';
+            if(g.target){
+                const daysLeft = daysBetween(Date.now(), g.target);
+                rightMeta.textContent = (daysLeft>=0? daysLeft+'d left' : Math.abs(daysLeft)+'d overdue');
+            } else rightMeta.textContent = 'No deadline';
+            tl.appendChild(rightMeta);
+            card.appendChild(tl);
+
+    
+            if(g.notes && g.notes.length){
+                const notesWrap = document.createElement('div'); notesWrap.className='small';
+                const entries = g.notes.slice(-3).map(n=> '<div>• '+ new Date(n.t).toLocaleDateString() +' — '+ escapeHtml(n.text) +'</div>').join('');
+                notesWrap.innerHTML = entries;
+                card.appendChild(notesWrap);
+            }
+
+            goalsEl.appendChild(card);
+        });
+
+        const total = goals.length;
+        const avg = total ? Math.round(goals.reduce((s,g)=>s+g.percent,0)/total) : 0;
+        avgProgressEl.style.width = avg+'%';
+        avgPctEl.textContent = avg+'%';
+        totalCountEl.textContent = total + (total===1? ' goal':' goals');
+        progressBadge.textContent = (total? avg + '% avg' : 'No goals');
+
+    
+        if(goals.length){
+            const byNeed = goals.slice().sort((a,b)=>{
+                const pa = a.percent + (a.target? 100 - Math.max(0, daysBetween(Date.now(), a.target))/365*50 : 0);
+                const pb = b.percent + (b.target? 100 - Math.max(0, daysBetween(Date.now(), b.target))/365*50 : 0);
+                return pa - pb;
+            })[0];
+            nextGoalText.textContent = byNeed.title + ' — '+ byNeed.percent +'%';
+        } else {
+            nextGoalText.textContent = 'Add a goal to get a motivational nudge';
+        }
+    }
+
+    function motivationMessage(p){
+        if(p >= 100) return {text:'Completed 🎉 — celebrate and set a new goal!', bg:'linear-gradient(90deg,#16a34a,#22c55e)'};
+        if(p >= 75) return {text:'Almost there — keep pushing!', bg:'linear-gradient(90deg,#f97316,#f59e0b)'};
+        if(p >= 50) return {text:'Halfway! Consistency wins. Try a small weekly habit.', bg:'linear-gradient(90deg,#7c5cff,#60a5fa)'};
+        if(p >= 25) return {text:'Good start — schedule small milestones to sustain momentum.', bg:'linear-gradient(90deg,#06b6d4,#3b82f6)'};
+        return {text:'New goal — start with a tiny step today (5–10 minutes or $5).', bg:'linear-gradient(90deg,#3b82f6,#7c5cff)'};
+    }
+
+    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+    addBtn.onclick = ()=>{
+        const title = document.getElementById('title').value.trim();
+        const category = document.getElementById('category').value;
+        const targetDate = document.getElementById('targetDate').value;
+        if(!title){ alert('Please enter a title for the goal.'); titleInput.focus(); return; }
+        addGoal(title, category, targetDate||null);
+        document.getElementById('title').value=''; document.getElementById('targetDate').value='';
+    };
+
+    clearBtn.onclick = ()=>{ if(confirm('Clear all goals?')){ goals=[]; save(); showToast('All cleared'); } };
+
+    exportBtn.onclick = ()=>{
+        const blob = new Blob([JSON.stringify(goals, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'goals.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        showToast('Exported goals.json');
+    };
+
+    importBtn.onclick = ()=> importFile.click();
+    importFile.onchange = (e)=>{
+        const f = e.target.files[0]; if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ()=> {
+            try{
+                const parsed = JSON.parse(reader.result);
+                if(!Array.isArray(parsed)) throw new Error('Invalid format');
+                // basic validation - ensure objects have id/title
+                const ok = parsed.every(p => p && typeof p.id === 'string' && typeof p.title === 'string');
+                if(!ok) throw new Error('Invalid items');
+                goals = parsed;
+                save();
+                showToast('Imported ' + parsed.length + ' goals');
+            } catch(err){
+                alert('Import failed: ' + err.message);
+            }
+        };
+        reader.readAsText(f);
+        importFile.value = '';
+    };
+
+    sortSelect.onchange = ()=> render();
+
+    function sortGoals(arr){
+        const mode = sortSelect.value;
+        if(mode === 'recent') return arr.sort((a,b)=> b.created - a.created);
+        if(mode === 'percentAsc') return arr.sort((a,b)=> a.percent - b.percent);
+        if(mode === 'percentDesc') return arr.sort((a,b)=> b.percent - a.percent);
+        if(mode === 'deadline') return arr.sort((a,b)=>{
+            if(!a.target) return 1;
+            if(!b.target) return -1;
+            return a.target - b.target;
+        });
+        return arr;
+    }
+    let toastTimer;
+    function showToast(msg, time=1600){
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(()=> t.classList.remove('show'), time);
+    }
+
+    render();
+
+    titleInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ addBtn.click(); } });
+})();
+</script>
+</body>
+</html>
