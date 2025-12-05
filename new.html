@@ -1,0 +1,101 @@
+<!DOCTYPE html> 
+<html>
+<head>
+<title>PERCENTAGE-CGPA CONVERTER</title>
+<style>
+    body {
+        margin: 0;
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(to right, #0d2fc9, #f0670c65 ,#0d2fc9);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    h2 {
+        text-align: center;
+        color: #ffffff;
+        font-size: 24px;
+        margin: 20px 0 15px 0;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    h2:hover {
+        transform: scale(1.05);
+        transition: 0.3s ease;
+    }
+    
+    .box {
+        background: rgba(224, 182, 182, 0.95);
+        padding: 40px;
+        border-radius: 20px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+    
+    label {
+        display: block;
+        margin-top: 15px;
+        color: #333;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    input {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0 20px 0;
+        border-radius: 10px;
+        border: 2px solid #667eea;
+        font-size: 16px;
+        box-sizing: border-box;
+        transition: 0.3s ease;
+    }
+    
+    input:focus {
+        outline: none;
+        border-color: #764ba2;
+        box-shadow: 0 0 10px rgba(118, 75, 162, 0.3);
+    }
+    
+    #result {
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        color: #667eea;
+        margin-top: 20px;
+        padding: 15px;
+        background: #f0f0f0;
+        border-radius: 10px;
+    }
+</style>
+</style></head>
+<body> 
+    <div class="box">
+    <h2>PERCENTAGE TO CGPA CONVERTER</h2>
+    <label for="percentage">Enter Percentage:</label>
+    <input type="number" id="percentage" placeholder="e.g., 85" oninput="convertToCGPA()"/>
+    <h2>CGPA TO PERCENTAGE CONVERTER</h2>
+    <label for="cgpa">Enter CGPA:</label>
+    <input type="number" id="cgpa" placeholder="e.g., 8.5" oninput="convertToPercentage()"/>
+    
+    <p id="result"></p>
+    </div>
+<script>
+function convertToCGPA() {
+    var percentage = document.getElementById("percentage").value;
+    var cgpa = (percentage / 9.5).toFixed(2);
+    document.getElementById("result").innerText = "CGPA: " + cgpa;
+}
+function convertToPercentage() {
+    var cgpa = document.getElementById("cgpa").value;
+    var percentage = (cgpa * 9.5).toFixed(2);
+    document.getElementById("result").innerText = "Percentage: " + percentage + "%";
+}
+</script>
+</body>
+</html>
