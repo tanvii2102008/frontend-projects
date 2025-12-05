@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Portfolio Builder</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f4f4f4; --card:#fff; --muted:#666; --accent:#0a74ff;
+    }
+    *{box-sizing:border-box}
+    body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 20px; background: var(--bg); color:#111; }
+    h1,h2,h3{margin:0 0 10px 0}
+    h1 {text-align:center; margin-bottom:20px}
+    .container { display: flex; gap: 20px; max-width:1200px; margin:0 auto; }
+    .form-box, .output-box {
+      flex: 1; background: var(--card); padding: 20px; border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(16,24,40,0.06);
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .full { grid-column: 1 / -1; }
+    label { font-size: 13px; color:var(--muted); display:block; margin-top:8px; }
+    input, textarea, select {
+      width: 100%; margin-top:6px; padding:10px 12px; font-size:14px;
+      border-radius: 8px; border:1px solid #e6e9ef; background:#fff; color:inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+    textarea{min-height:88px; resize:vertical}
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button {
+      background: var(--accent); color: white; padding:10px 14px;
+      border: none; cursor: pointer; border-radius:8px; font-weight:600;
+    }
+    button.ghost { background: transparent; color:var(--accent); border:1px solid #cfe1ff; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    .small { font-size:13px; padding:8px 10px; border-radius:7px }
+
+    #portfolioBox { padding:20px; border-radius:12px; }
+    #portfolioBox.light { background:white; color:#0b1220; }
+    #portfolioBox.dark { background:#0b1220; color:#e6eef8; }
+    #portfolioBox.blue { background: linear-gradient(180deg,#e6f0ff,#dbeafe); color:#04264b; }
+
+    .profile { display:flex; gap:16px; align-items:center; margin-bottom:12px; }
+    .avatar { width:84px; height:84px; border-radius:12px; background:linear-gradient(135deg,#ccc,#eee); display:flex; align-items:center; justify-content:center; font-size:28px; color:#fff; }
+    .about { font-size:14px; color:var(--muted); }
+    .skills { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 }
+    .skill { background:rgba(0,0,0,0.06); padding:6px 10px; border-radius:999px; font-size:13px; }
+    .card-container { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px }
+    .card {
+      background: rgba(255,255,255,0.85);
+      border:1px solid rgba(0,0,0,0.06);
+      padding:12px; border-radius:10px; width: calc(50% - 10px);
+      box-shadow: 0 2px 8px rgba(10,15,30,0.03);
+    }
+    .muted { color:var(--muted); font-size:13px; }
+
+    @media (max-width:900px){
+      .container { flex-direction:column; padding:12px; }
+      .card { width:100% }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    
+    #toast {
+      position: fixed; right: 20px; bottom: 20px; background: #111; color:#fff;
+      padding:10px 14px; border-radius:8px; opacity:0; transform: translateY(8px);
+      transition: opacity .25s, transform .25s; z-index:9999; pointer-events:none;
+    }
+    #toast.show { opacity:1; transform:none; pointer-events:auto; }
+  </style>
+</head>
+<body>
+<h1>Portfolio Builder</h1>
+
+<div class="container">
+  <div class="form-box">
+    <h3>Enter Your Details</h3>
+    <div class="form-grid">
+      <div>
+        <label for="name">Name</label>
+        <input id="name" placeholder="Your Name">
+      </div>
+
+      <div>
+        <label for="contact">Contact Email</label>
+        <input id="contact" placeholder="you@example.com" type="email">
+      </div>
+
+      <div class="full">
+        <label for="about">About You</label>
+        <textarea id="about" placeholder="Short bio or summary"></textarea>
+      </div>
+
+      <div>
+        <label for="skills">Skills (comma separated)</label>
+        <input id="skills" placeholder="JavaScript, React, Node.js">
+      </div>
+
+      <div>
+        <label for="projects">Projects (comma separated)</label>
+        <input id="projects" placeholder="Project A, Project B">
+      </div>
+
+      <div class="full">
+        <label for="theme">Choose Theme</label>
+        <select id="theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="blue">Blue</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button onclick="generatePortfolio()">Generate Portfolio</button>
+      <button class="ghost small" id="copyBtn" onclick="copyHTML()" disabled>Copy HTML</button>
+      <button class="ghost small" id="pdfBtn" onclick="downloadPDF()" disabled>Download PDF</button>
+    </div>
+    <p class="muted" style="margin-top:10px">Tips: use commas to separate skills/projects. Click Generate before copying or downloading.</p>
+  </div>
+
+  <div class="output-box" id="output">
+    <h3>Portfolio Preview</h3>
+    <div id="placeholder" class="muted">No portfolio generated yet. Fill the form and click "Generate Portfolio".</div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+  
+  function generatePortfolio() {
+    const name = document.getElementById("name").value.trim() || "Your Name";
+    const about = document.getElementById("about").value.trim() || "A short bio about you.";
+    const skills = document.getElementById("skills").value.split(",").map(s => s.trim()).filter(Boolean);
+    const projects = document.getElementById("projects").value.split(",").map(p => p.trim()).filter(Boolean);
+    const contact = document.getElementById("contact").value.trim() || "you@example.com";
+    const theme = document.getElementById("theme").value || "light";
+
+    const skillBadges = skills.length ? skills.map(s => `<span class="skill">${escapeHtml(s)}</span>`).join("") : '<span class="muted">No skills provided</span>';
+    const projectCards = projects.length ? projects.map(p => `<div class="card"><strong>${escapeHtml(p)}</strong></div>`).join("") : '<div class="muted">No projects added</div>';
+
+    const initials = getInitials(name);
+
+    const html = `
+      <div id="portfolioBox" class="${theme}">
+        <div class="profile">
+          <div class="avatar" aria-hidden="true">${initials}</div>
+          <div>
+            <h2 style="margin:0">${escapeHtml(name)}</h2>
+            <div class="muted" style="margin-top:6px"><b>Contact:</b> ${escapeHtml(contact)}</div>
+          </div>
+        </div>
+
+        <div class="about">${escapeHtml(about)}</div>
+
+        <h3 style="margin-top:12px">Skills</h3>
+        <div class="skills">${skillBadges}</div>
+
+        <h3 style="margin-top:12px">Projects</h3>
+        <div class="card-container">${projectCards}</div>
+      </div>
+    `;
+
+    document.getElementById("output").querySelectorAll("#placeholder, h3").forEach(n => { if(n.id==='placeholder') n.remove(); });
+    document.getElementById("output").innerHTML = '<h3>Portfolio Preview</h3>' + html;
+
+    document.getElementById("copyBtn").disabled = false;
+    document.getElementById("pdfBtn").disabled = false;
+
+    showToast("Portfolio generated");
+  }
+
+  function copyHTML() {
+    const box = document.getElementById("portfolioBox");
+    if (!box) { showToast("Generate a portfolio first"); return; }
+    const htmlCode = box.outerHTML;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(htmlCode).then(() => {
+        showToast("Portfolio HTML copied to clipboard");
+      }).catch(()=> fallbackCopy(htmlCode));
+    } else {
+      fallbackCopy(htmlCode);
+    }
+  }
+
+  function fallbackCopy(text){
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast("Portfolio HTML copied to clipboard");
+    } catch(e) {
+      showToast("Copy failed — select and copy manually", 3000);
+    }
+    ta.remove();
+  }
+
+  async function downloadPDF() {
+    const box = document.getElementById("portfolioBox");
+    if (!box) { showToast("Generate a portfolio first"); return; }
+
+    showToast("Preparing PDF...");
+    const scale = 2;
+    const canvas = await html2canvas(box, { scale, useCORS: true, backgroundColor: null });
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf || window.jspPDF || {};
+    const pdf = new (jsPDF || window.jspdf.jsPDF)('p', 'mm', 'a4');
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+    const fileName = (document.getElementById("name").value.trim() || 'portfolio').replace(/\s+/g,'_') + '.pdf';
+    pdf.save(fileName);
+    showToast("PDF downloaded");
+  }
+  function getInitials(name){
+    const parts = name.split(' ').filter(Boolean);
+    if(!parts.length) return 'U';
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+  function escapeHtml(text){
+    return String(text)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+  let toastTimer;
+  function showToast(msg, time = 1800){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> t.classList.remove('show'), time);
+  }
+  document.getElementById('projects').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); generatePortfolio(); }
+  });
+</script>
+</body>
+</html>
