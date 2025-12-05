@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Theme Generator</title>
+    <style>
+        :root{
+            --bg:#ffffff;
+            --font: "Arial, Helvetica, sans-serif";
+            --radius:12px;
+            --spacing:12px;
+            --text:#111;
+        }
+        body{
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            margin:16px;
+            background:#f4f6f8;
+            color:#222;
+        }
+        .wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start;}
+        .panel{
+            background:#fff;border:1px solid #e6e9ee;padding:12px;border-radius:8px;
+            box-shadow:0 1px 2px rgba(10,10,10,0.03);
+        }
+        .controls label{display:block;font-size:13px;margin:8px 0 6px;color:#444;}
+        .controls input[type="color"]{height:36px;width:100%;padding:2px;border-radius:6px;border:1px solid #ddd;}
+        .controls select,input[type="range"],input[type="number"]{width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;background:#fff;}
+        .preview{
+            padding:18px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff);min-height:220px;
+            display:flex;flex-direction:column;gap:12px;align-items:flex-start;
+        }
+        .card{
+            width:100%;background:var(--bg);color:var(--text);padding:var(--spacing);border-radius:var(--radius);
+            font-family:var(--font);box-shadow:0 6px 18px rgba(20,30,60,0.06);border:1px solid rgba(0,0,0,0.04);
+        }
+        .card h3{margin:0 0 8px;font-size:1.05rem;}
+        .card p{margin:0;font-size:0.95rem;line-height:1.4;}
+        .css-output{width:100%;height:140px;padding:10px;border-radius:6px;border:1px solid #e3e6ea;background:#0f1720;color:#e6eef8;font-family:monospace;font-size:12px;resize:vertical;overflow:auto;}
+        .row{display:flex;gap:8px;align-items:center;}
+        button{padding:8px 10px;border-radius:6px;border:1px solid #cfd6dd;background:#fff;cursor:pointer;}
+        .actions{display:flex;gap:8px; margin-top:8px;}
+        small.help{color:#6b7280}
+    </style>
+</head>
+<body>
+    <h2>Theme Generator</h2>
+    <div class="wrap">
+        <div class="panel controls" aria-label="Theme controls">
+            <label for="bg">Background color</label>
+            <input id="bg" type="color" value="#3b82f6">
+
+            <label for="font">Font style</label>
+            <select id="font">
+                <option value='"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial'>Inter / System</option>
+                <option value='"Arial", Helvetica, sans-serif'>Arial</option>
+                <option value='"Georgia", "Times New Roman", serif'>Georgia (serif)</option>
+                <option value='"Courier New", monospace'>Courier New (mono)</option>
+                <option value='"Verdana", Geneva, sans-serif'>Verdana</option>
+                <option value='custom'>Custom (paste family)</option>
+            </select>
+            <input id="font-custom" type="text" placeholder='e.g. "Comic Sans MS", cursive' style="display:none;margin-top:8px;">
+
+            <label for="radius">Border radius <small class="help">px</small></label>
+            <input id="radius" type="range" min="0" max="48" value="12">
+            <div class="row">
+                <input id="radius-num" type="number" min="0" max="48" value="12" style="width:80px;">
+                <small class="help">Adjust corner roundness</small>
+            </div>
+
+            <label for="spacing">Spacing (padding) <small class="help">px</small></label>
+            <input id="spacing" type="range" min="4" max="48" value="12">
+            <div class="row">
+                <input id="spacing-num" type="number" min="4" max="48" value="12" style="width:80px;">
+                <small class="help">Inner padding for elements</small>
+            </div>
+
+            <div class="actions">
+                <button id="reset">Reset</button>
+                <button id="copy-css">Copy CSS</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel preview" aria-live="polite">
+                <div class="card" id="sampleCard">
+                    <h3>Component title</h3>
+                    <p>Preview area — background, font, radius and spacing apply here instantly.</p>
+                </div>
+
+                <label for="cssOut" style="margin-top:8px">Generated CSS</label>
+                <textarea id="cssOut" class="css-output" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const bg = document.getElementById('bg');
+        const font = document.getElementById('font');
+        const fontCustom = document.getElementById('font-custom');
+        const radius = document.getElementById('radius');
+        const radiusNum = document.getElementById('radius-num');
+        const spacing = document.getElementById('spacing');
+        const spacingNum = document.getElementById('spacing-num');
+        const card = document.getElementById('sampleCard');
+        const cssOut = document.getElementById('cssOut');
+        const copyBtn = document.getElementById('copy-css');
+        const resetBtn = document.getElementById('reset');
+
+        // Initialize
+        function apply(){
+            const bgVal = bg.value;
+            let fontVal = font.value;
+            if(fontVal === 'custom' && fontCustom.value.trim()) fontVal = fontCustom.value.trim();
+            const radiusVal = radius.value + 'px';
+            const spacingVal = spacing.value + 'px';
+
+            // Apply to :root (document-level variables used by preview)
+            document.documentElement.style.setProperty('--bg', bgVal);
+            document.documentElement.style.setProperty('--font', fontVal);
+            document.documentElement.style.setProperty('--radius', radiusVal);
+            document.documentElement.style.setProperty('--spacing', spacingVal);
+
+            // Adjust text color for contrast (simple heuristic)
+            const rgb = hexToRgb(bgVal);
+            const brightness = (rgb.r*299 + rgb.g*587 + rgb.b*114) / 1000;
+            const textColor = brightness > 140 ? '#0f1720' : '#f8fafc';
+            document.documentElement.style.setProperty('--text', textColor);
+
+            // Sync numbers
+            radiusNum.value = radius.value;
+            spacingNum.value = spacing.value;
+
+            // Update CSS output
+            const css = generateCSS(bgVal, fontVal, radiusVal, spacingVal, textColor);
+            cssOut.value = css;
+        }
+
+        function generateCSS(bg, fontFamily, radius, spacing, textColor){
+            // Escape variable font family if needed
+            return `/* Theme snippet */\n:root {\n  --theme-bg: ${bg};\n  --theme-font: ${fontFamily};\n  --theme-radius: ${radius};\n  --theme-spacing: ${spacing};\n  --theme-text: ${textColor};\n}\n\n/* Example component */\n.my-component {\n  background: var(--theme-bg);\n  color: var(--theme-text);\n  font-family: var(--theme-font);\n  border-radius: var(--theme-radius);\n  padding: var(--theme-spacing);\n}\n`;
+        }
+
+        function hexToRgb(hex){
+            const h = hex.replace('#','');
+            const bigint = parseInt(h,16);
+            if(h.length===3){
+                return {
+                    r: parseInt(h[0]+h[0],16),
+                    g: parseInt(h[1]+h[1],16),
+                    b: parseInt(h[2]+h[2],16)
+                };
+            }
+            return { r: (bigint>>16)&255, g: (bigint>>8)&255, b: bigint&255 };
+        }
+
+        // Events
+        [bg, radius, spacing].forEach(el=>el.addEventListener('input', apply));
+        [radiusNum, spacingNum].forEach(el=>{
+            el.addEventListener('input', e=>{
+                const val = e.target.value;
+                if(e.target.id === 'radius-num'){ radius.value = Math.max(0,Math.min(48,Number(val)||0)); }
+                if(e.target.id === 'spacing-num'){ spacing.value = Math.max(4,Math.min(48,Number(val)||4)); }
+                apply();
+            });
+        });
+
+        font.addEventListener('change', ()=>{
+            if(font.value === 'custom'){ fontCustom.style.display = 'block'; } else { fontCustom.style.display = 'none'; }
+            apply();
+        });
+        fontCustom.addEventListener('input', apply);
+
+        copyBtn.addEventListener('click', async ()=>{
+            try{
+                await navigator.clipboard.writeText(cssOut.value);
+                copyBtn.textContent = 'Copied!';
+                setTimeout(()=>copyBtn.textContent = 'Copy CSS',1200);
+            }catch(e){
+                copyBtn.textContent = 'Copy failed';
+                setTimeout(()=>copyBtn.textContent = 'Copy CSS',1200);
+            }
+        });
+
+        resetBtn.addEventListener('click', ()=>{
+            bg.value = '#3b82f6';
+            font.value = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+            fontCustom.value = '';
+            fontCustom.style.display = 'none';
+            radius.value = 12; radiusNum.value = 12;
+            spacing.value = 12; spacingNum.value = 12;
+            apply();
+        });
+
+        // initial apply
+        apply();
+    </script>
+</body>
+</html>
