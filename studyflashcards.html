@@ -1,0 +1,345 @@
+<!-- Filename: flashcards.html -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Study/Revision Flashcards</title>
+<style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071021 0%,#081328 60%),var(--bg);color:#e6eef6;padding:24px}
+    .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:20px}
+    header{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    h1{font-size:18px;margin:0}
+    .controls{display:flex;gap:8px;align-items:center}
+    button, input[type="text"], textarea, select {font:inherit}
+    button{background:linear-gradient(180deg,var(--accent),#028a9a);border:none;padding:8px 12px;color:#012;cursor:pointer;border-radius:8px}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:6px 10px}
+    .panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    form .row{display:flex;gap:8px;margin-bottom:8px}
+    input[type="text"], textarea{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;resize:vertical}
+    textarea{min-height:80px}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+    /* Flip card styles (animation handled by CSS) */
+    .card{perspective:1000px;height:160px}
+    .card-inner{position:relative;width:100%;height:100%;transition:transform 400ms cubic-bezier(.2,.9,.3,1);transform-style:preserve-3d;border-radius:10px;cursor:pointer}
+    .card.is-flipped .card-inner{transform:rotateY(180deg)}
+    .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;font-weight:600}
+    .front{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));color:#dbeafe}
+    .back{transform:rotateY(180deg);background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.05));color:#e6f5ff;font-weight:500}
+    .card small{display:block;font-size:11px;color:var(--muted);margin-top:8px;font-weight:400}
+    .card-actions{display:flex;gap:6px;margin-top:10px}
+    .muted{color:var(--muted);font-size:13px}
+    .practice-panel{display:flex;flex-direction:column;gap:12px}
+    .qbox{min-height:180px;border-radius:12px;padding:18px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.04))}
+    .qtext{font-size:18px}
+    .btn-row{display:flex;gap:8px}
+    .stats{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center}
+    .bad{background:#ff4d6d;color:#140007}
+    .good{background:#6ee7b7;color:#052014}
+    footer{grid-column:1/3;text-align:center;color:var(--muted);font-size:13px;margin-top:14px}
+    .tag{background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:6px;font-size:12px;margin-left:6px}
+    .small-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px;border-radius:8px;color:var(--muted)}
+    .list-controls{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>Study Flashcards</h1>
+        <div class="controls">
+            <div class="stats" id="stats">Cards: 0</div>
+            <button id="startPractice">Start Random Quiz</button>
+            <button class="ghost" id="reviewWrong">Review Wrong</button>
+        </div>
+    </header>
+
+    <!-- Left: Create & Options -->
+    <aside class="panel">
+        <form id="cardForm">
+            <label>Front</label>
+            <textarea id="frontInput" placeholder="Question or term"></textarea>
+            <label>Back</label>
+            <textarea id="backInput" placeholder="Answer or definition"></textarea>
+            <div class="row">
+                <input type="text" id="tagsInput" placeholder="tags (comma separated)" />
+                <button type="submit">Add Card</button>
+            </div>
+        </form>
+
+        <div style="height:12px"></div>
+
+        <div class="list-controls">
+            <button id="clearAll" class="small-btn">Clear All</button>
+            <button id="exportBtn" class="small-btn">Export</button>
+            <button id="importBtn" class="small-btn">Import</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none" />
+        </div>
+
+        <div style="height:12px"></div>
+        <div class="muted">Recent wrong answers</div>
+        <div id="wrongList" style="margin-top:8px;font-size:13px"></div>
+    </aside>
+
+    <!-- Right: Cards & Practice -->
+    <main>
+        <section class="panel" style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div class="muted">All Cards</div>
+                <div class="muted">Click a card to flip</div>
+            </div>
+            <div class="cards" id="cardsContainer"></div>
+        </section>
+
+        <section class="panel practice-panel" id="practicePanel">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><strong id="modeLabel">Practice: Idle</strong><span id="tagFilter" class="tag" style="display:none"></span></div>
+                <div class="muted" id="practiceProgress">0 / 0</div>
+            </div>
+
+            <div class="qbox" id="questionBox">
+                <div class="qtext" id="qText">Start a random quiz or review wrong answers.</div>
+                <div style="height:10px"></div>
+                <div id="aReveal" class="muted">Answer hidden</div>
+            </div>
+
+            <div class="btn-row">
+                <button id="revealBtn" class="ghost">Reveal</button>
+                <button id="correctBtn" class="good" disabled>Correct</button>
+                <button id="wrongBtn" class="bad" disabled>Wrong</button>
+                <button id="nextBtn" class="ghost" disabled>Next</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>Local-only app — data saved in your browser (localStorage)</footer>
+</div>
+
+<script>
+/* Simple Flashcards app with CSS flip animation */
+const STORAGE_KEY = 'flashcards.v1';
+const WRONG_KEY = 'flashcards.wrong.v1';
+
+let state = {
+    cards: [],
+    wrong: [], // {id, ts, count}
+    session: {pool:[], idx:0, current:null, mode:'idle', reviewed:0,total:0}
+};
+
+function uid(){return Math.random().toString(36).slice(2,9)}
+function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify(state.cards)); localStorage.setItem(WRONG_KEY, JSON.stringify(state.wrong)); updateUI();}
+function load(){ const s = localStorage.getItem(STORAGE_KEY); const w = localStorage.getItem(WRONG_KEY); state.cards = s?JSON.parse(s):[]; state.wrong = w?JSON.parse(w):[]; updateUI();}
+function addCard(front, back, tags){
+    state.cards.unshift({id:uid(),front,back,tags:tags.filter(Boolean),created:Date.now()});
+    save();
+}
+function deleteCard(id){
+    state.cards = state.cards.filter(c=>c.id!==id);
+    state.wrong = state.wrong.filter(w=>w.id!==id);
+    save();
+}
+function clearAll(){ if(!confirm('Clear all cards?')) return; state.cards=[]; state.wrong=[]; save(); }
+
+function renderCards(){
+    const cont = document.getElementById('cardsContainer'); cont.innerHTML = '';
+    state.cards.forEach(c=>{
+        const el = document.createElement('div'); el.className='card';
+        el.innerHTML = `
+            <div class="card-inner" data-id="${c.id}">
+                <div class="face front">
+                    <div>${escapeHtml(c.front)}</div>
+                    <small>${c.tags.join(', ') || ''}</small>
+                </div>
+                <div class="face back">
+                    <div>${escapeHtml(c.back)}</div>
+                    <div class="card-actions">
+                        <button class="small-btn" data-action="edit">Edit</button>
+                        <button class="small-btn" data-action="del">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        // flip on click toggles class on parent .card
+        el.addEventListener('click', (ev)=>{
+            // prevent flipping when clicking buttons
+            if(ev.target.dataset.action==='del'){ deleteCard(c.id); return;}
+            if(ev.target.dataset.action==='edit'){ openEdit(c); return;}
+            el.classList.toggle('is-flipped');
+        });
+        cont.appendChild(el);
+    });
+    document.getElementById('stats').textContent = `Cards: ${state.cards.length}`;
+}
+
+function updateWrongUI(){
+    const list = document.getElementById('wrongList'); list.innerHTML='';
+    if(state.wrong.length===0){ list.textContent = 'None'; return;}
+    state.wrong.slice().sort((a,b)=>b.ts-a.ts).slice(0,6).forEach(w=>{
+        const c = state.cards.find(x=>x.id===w.id);
+        const name = c ? (c.front.slice(0,50)) : '(card deleted)';
+        const el = document.createElement('div');
+        el.style.display='flex'; el.style.justifyContent='space-between'; el.style.alignItems='center'; el.style.marginBottom='6px';
+        el.innerHTML = `<div style="flex:1">${escapeHtml(name)} <span class="tag">${w.count} wrong</span></div><div style="margin-left:8px"><button class="small-btn" data-id="${w.id}">Practice</button></div>`;
+        el.querySelector('button').addEventListener('click', ()=>{ startPractice({mode:'wrong',id:w.id}) });
+        list.appendChild(el);
+    });
+}
+
+function updateUI(){ renderCards(); updateWrongUI(); updatePracticeUI(); }
+
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+
+/* Form handlers */
+document.getElementById('cardForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const front = document.getElementById('frontInput').value.trim();
+    const back = document.getElementById('backInput').value.trim();
+    const tags = (document.getElementById('tagsInput').value || '').split(',').map(t=>t.trim()).filter(Boolean);
+    if(!front || !back) return alert('Both front and back required');
+    addCard(front, back, tags);
+    document.getElementById('frontInput').value=''; document.getElementById('backInput').value=''; document.getElementById('tagsInput').value='';
+});
+
+/* Edit is a simple prompt */
+function openEdit(card){
+    const f = prompt('Edit front', card.front);
+    if(f===null) return;
+    const b = prompt('Edit back', card.back);
+    if(b===null) return;
+    const t = prompt('Tags (comma separated)', card.tags.join(', '));
+    card.front = f.trim(); card.back = b.trim(); card.tags = (t||'').split(',').map(x=>x.trim()).filter(Boolean);
+    save();
+}
+
+/* Practice logic */
+function startPractice({mode='random',id=null} = {}){
+    if(state.cards.length===0) return alert('No cards to practice');
+    state.session = {pool:[], idx:0, current:null, mode, reviewed:0, total:0};
+    if(mode==='wrong'){
+        const wrongIds = state.wrong.map(w=>w.id).filter(id=>state.cards.some(c=>c.id===id));
+        if(id){ state.session.pool = wrongIds.includes(id) ? [id] : wrongIds; }
+        else state.session.pool = shuffle(wrongIds);
+    } else {
+        state.session.pool = shuffle(state.cards.map(c=>c.id));
+    }
+    state.session.total = state.session.pool.length;
+    if(state.session.total===0) return alert('No cards in selected set');
+    state.session.idx = 0;
+    state.session.current = state.session.pool[0];
+    state.session.mode = mode;
+    updatePracticeUI(); renderQuestion();
+}
+
+function renderQuestion(){
+    const q = state.cards.find(c=>c.id===state.session.current);
+    if(!q){ /* skip to next */ return nextQuestion(); }
+    document.getElementById('qText').innerHTML = escapeHtml(q.front);
+    document.getElementById('aReveal').innerHTML = '<span class="muted">Answer hidden</span>';
+    document.getElementById('revealBtn').disabled=false;
+    document.getElementById('correctBtn').disabled=true;
+    document.getElementById('wrongBtn').disabled=true;
+    document.getElementById('nextBtn').disabled=true;
+    document.getElementById('modeLabel').textContent = `Practice: ${state.session.mode==='wrong' ? 'Review Wrong' : 'Random Quiz'}`;
+    document.getElementById('practiceProgress').textContent = `${state.session.idx+1} / ${state.session.total}`;
+    document.getElementById('tagFilter').style.display='none';
+}
+
+function revealAnswer(){
+    const q = state.cards.find(c=>c.id===state.session.current);
+    if(!q) return;
+    document.getElementById('aReveal').innerHTML = escapeHtml(q.back);
+    document.getElementById('revealBtn').disabled=true;
+    document.getElementById('correctBtn').disabled=false;
+    document.getElementById('wrongBtn').disabled=false;
+    document.getElementById('nextBtn').disabled=false;
+}
+
+function markResult(isCorrect){
+    const id = state.session.current;
+    if(!id) return;
+    if(!isCorrect){
+        const rec = state.wrong.find(w=>w.id===id);
+        if(rec) rec.count += 1, rec.ts = Date.now();
+        else state.wrong.push({id, ts:Date.now(), count:1});
+    } else {
+        // If correct, optionally reduce wrong count / remove record
+        const rec = state.wrong.find(w=>w.id===id);
+        if(rec){
+            rec.count = Math.max(0, rec.count-1);
+            if(rec.count===0) state.wrong = state.wrong.filter(w=>w.id!==id);
+        }
+    }
+    save();
+    state.session.reviewed += 1;
+    document.getElementById('nextBtn').disabled=false;
+    document.getElementById('correctBtn').disabled=true;
+    document.getElementById('wrongBtn').disabled=true;
+}
+
+function nextQuestion(){
+    if(state.session.idx+1 >= state.session.total){
+        alert('Session finished');
+        state.session = {pool:[], idx:0, current:null, mode:'idle', reviewed:0,total:0};
+        updatePracticeUI();
+        return;
+    }
+    state.session.idx++;
+    state.session.current = state.session.pool[state.session.idx];
+    renderQuestion();
+}
+
+function updatePracticeUI(){
+    const label = document.getElementById('modeLabel');
+    label.textContent = state.session.mode==='idle' ? 'Practice: Idle' : (state.session.mode==='wrong' ? 'Practice: Review Wrong' : 'Practice: Random Quiz');
+    document.getElementById('practiceProgress').textContent = state.session.total ? `${state.session.idx+1} / ${state.session.total}` : '0 / 0';
+}
+
+/* Helpers */
+function shuffle(a){ return a.slice().map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]); }
+
+function updateWrongRecordsUI(){}
+document.getElementById('startPractice').addEventListener('click', ()=>startPractice({mode:'random'}));
+document.getElementById('reviewWrong').addEventListener('click', ()=>startPractice({mode:'wrong'}));
+document.getElementById('revealBtn').addEventListener('click', revealAnswer);
+document.getElementById('correctBtn').addEventListener('click', ()=>{ markResult(true); });
+document.getElementById('wrongBtn').addEventListener('click', ()=>{ markResult(false); });
+document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+
+document.getElementById('clearAll').addEventListener('click', clearAll);
+
+/* Export / Import */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const data = {cards:state.cards, wrong:state.wrong, exported:Date.now()};
+    const blob = new Blob([JSON.stringify(data, null, 2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='flashcards-export.json'; a.click(); URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (ev)=>{
+    const f = ev.target.files[0]; if(!f) return;
+    const reader = new FileReader(); reader.onload = e=>{
+        try{
+            const payload = JSON.parse(e.target.result);
+            if(Array.isArray(payload.cards)) state.cards = payload.cards.concat(state.cards);
+            if(Array.isArray(payload.wrong)) state.wrong = payload.wrong.concat(state.wrong);
+            save();
+            alert('Import complete');
+        } catch(err){ alert('Invalid file'); }
+    };
+    reader.readAsText(f);
+    ev.target.value='';
+});
+
+/* Keyboard shortcuts: n = next, r = reveal */
+document.addEventListener('keydown', (e)=>{
+    if(e.key==='n') nextQuestion();
+    if(e.key==='r') revealAnswer();
+});
+
+/* Init */
+load();
+</script>
+</body>
+</html>
